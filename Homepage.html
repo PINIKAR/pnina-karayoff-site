@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>פנינה קרייוף | AI Architect לעולם התיווך</title>
+
+  <link rel="stylesheet" href="styles/colors_and_type.css" />
+  <link rel="stylesheet" href="styles/site.css" />
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="components/Icons.jsx"></script>
+  <script type="text/babel" src="components/Sections.jsx"></script>
+  <script type="text/babel" src="components/Parts.jsx"></script>
+  <script type="text/babel" src="components/Tweaks.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      const [variant, setVariant]   = React.useState(() => +localStorage.getItem('pk_variant') || 1);
+      const [theme,   setTheme]     = React.useState(() => localStorage.getItem('pk_theme') || 'forest');
+      const [font,    setFont]      = React.useState(() => localStorage.getItem('pk_font')  || 'heebo');
+      const [editing, setEditing]   = React.useState(false);
+      const [txt,     setTxt]       = React.useState(() => {
+        try { return { ...TXT, ...(JSON.parse(localStorage.getItem('pk_txt') || '{}')) }; }
+        catch { return { ...TXT }; }
+      });
+      const [tweaksOpen, setTweaksOpen] = React.useState(false);
+
+      React.useEffect(() => {
+        const t = THEMES.find(x => x.id === theme) || THEMES[0];
+        applyTheme(t);
+        localStorage.setItem('pk_theme', theme);
+      }, [theme]);
+
+      React.useEffect(() => {
+        const f = FONTS.find(x => x.id === font) || FONTS[0];
+        applyFont(f);
+        localStorage.setItem('pk_font', font);
+      }, [font]);
+
+      React.useEffect(() => { localStorage.setItem('pk_variant', String(variant)); }, [variant]);
+      React.useEffect(() => { localStorage.setItem('pk_txt', JSON.stringify(txt)); }, [txt]);
+
+      // body class for edit mode
+      React.useEffect(() => {
+        document.body.classList.toggle('edit-mode', editing);
+      }, [editing]);
+
+      // host contract for Tweaks toggle
+      React.useEffect(() => {
+        const handler = (e) => {
+          if (e?.data?.type === '__activate_edit_mode')   setTweaksOpen(true);
+          if (e?.data?.type === '__deactivate_edit_mode') setTweaksOpen(false);
+        };
+        window.addEventListener('message', handler);
+        window.parent.postMessage({ type: '__edit_mode_available' }, '*');
+        return () => window.removeEventListener('message', handler);
+      }, []);
+
+      // inline text editing via contentEditable
+      React.useEffect(() => {
+        if (!editing) return;
+        const nodes = document.querySelectorAll('[data-edit]');
+        const handlers = [];
+        nodes.forEach(n => {
+          n.setAttribute('contenteditable', 'true');
+          n.setAttribute('spellcheck', 'false');
+          const onBlur = () => {
+            const k = n.getAttribute('data-edit');
+            const v = n.innerText;
+            setTxt(prev => ({ ...prev, [k]: v }));
+          };
+          n.addEventListener('blur', onBlur);
+          handlers.push([n, onBlur]);
+        });
+        return () => {
+          handlers.forEach(([n, h]) => {
+            n.removeEventListener('blur', h);
+            n.removeAttribute('contenteditable');
+            n.removeAttribute('spellcheck');
+          });
+        };
+      }, [editing, variant]);
+
+      const Hero = variant === 1 ? HeroV1 : HeroV2;
+
+      return (
+        <React.Fragment>
+          <Nav TXT={txt} />
+          <Hero TXT={txt} />
+          <Services TXT={txt} SERVICES={SERVICES} Icon={Icon} />
+          <Why TXT={txt} WHY={WHY} STATS={STATS} Icon={Icon} />
+          <About TXT={txt} />
+          <Testimonials TXT={txt} TESTIMONIALS={TESTIMONIALS} Icon={Icon} />
+          <Faq TXT={txt} FAQ={FAQ} />
+          <Contact TXT={txt} Icon={Icon} />
+          <FinalCta TXT={txt} />
+          <Footer />
+          <TweaksPanel
+            open={tweaksOpen}
+            close={() => setTweaksOpen(false)}
+            variant={variant} setVariant={setVariant}
+            theme={theme} setTheme={setTheme}
+            font={font} setFont={setFont}
+            editing={editing} setEditing={setEditing}
+          />
+        </React.Fragment>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
